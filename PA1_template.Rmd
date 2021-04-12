@@ -1,0 +1,114 @@
+---
+title: "PA1_template.Rmd"
+output: html_document
+keep_md= true
+---
+## Loading and Preprocesss Data
+## Load needed Packages
+
+```{r data}
+library(ggplot2)
+library(dplyr)
+Activity_Data1<- read.csv("activity.csv")
+Active_Days<- subset(Activity_Data1)
+Active_Days$date<- as.Date(Active_Days$date, format="%Y-%m-%d")
+```
+
+### Total Steps Per Day
+```{r sum}
+    Steps_aDay<- aggregate(x= Active_Days$steps, FUN= sum, by= list(Active_Days$date),na.rm= TRUE)
+    colnames(Steps_aDay)<- c("Date","Steps")
+```
+
+### Histogram of Steps Per Day
+```{r histogram}
+ Base_plot1<- ggplot(Steps_aDay, aes(Steps))
+     Base_plot1+ geom_histogram(fill="Orange", binwidth = 1000)+
+       ggtitle("Steps Per Day Histogram")+
+       ylab("Frequency")
+```
+
+###Mean and Median of Total steps taken
+```{r mean median}
+  mean(Steps_aDay$Steps, na.rm = TRUE)
+  median(Steps_aDay$Steps, na.rm = TRUE)
+```
+
+## Average Daily Activity Pattern
+```{r}
+ Steps_perTime<- aggregate(steps~interval, data= Active_Days, FUN=mean, na.action = na.omit)
+      Steps_perTime$time<- Steps_perTime$interval/100
+```
+
+## Time series daily activity creating line plot
+```{r time series}
+Line_plot<- ggplot(Steps_perTime, aes(time,steps))
+      Line_plot+ geom_line(col="red")+
+        labs(title = "Average Steps per Time Interval",
+             x= "Time Interval",
+             y= "Steps")
+```
+
+### Interval with Most Steps on Average 
+```{r max}
+Max_steps<- tbl_df(Steps_perTime)
+      Max_steps%>%
+        select(time, steps)%>%
+        filter(steps==max(Max_steps$steps))
+```
+
+## Input missing Values
+```{r fill in}
+Active_Days$Complete<- ifelse(is.na(Active_Days$steps),
+                                    round(Steps_perTime$steps[match(Active_Days$interval, Steps_perTime$interval)],0),
+                                    Active_Days$steps)
+```
+
+##Total steps per day with fill in values
+```{r fill in dataset}
+New_data<- data.frame(steps=Active_Days$Complete, interval=Active_Days$interval, date= Active_Days$date)
+      #preparing data
+      Complete_stepsAday<- aggregate(New_data$steps, list(New_data$date), FUN=sum)
+      colnames(Complete_stepsAday)<- c("Date","steps")
+```
+
+##Histogram of new data 
+```{r fill in histogram}
+updated_plot<- ggplot(Complete_stepsAday, aes(steps))
+        updated_plot+ geom_histogram(boundary=0, binwidth = 2500, fill= "pink", color="blue")+
+          labs(title = "Histogram of Steps Per Day", x= "Steps", y= "Frequency")
+```
+
+## Reporting Mean and Median of new dataset
+```{r mean and median new dataset}
+mean(Complete_stepsAday$steps)
+median(Complete_stepsAday$steps)  
+```
+
+## Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+The first part of the assignment, when missing values were ignored the mean was calculated in lines 32 to 35 and after adding the missing values the mean and median were again calculated in lines 83 to 86.
+The mean was increased by approximately 1000 steps when the missing values were filled in, however, the median changed by less than 400 steps.
+
+## Differences in weekends and weekdays steps pattern?
+date changed using the dplyr package loaded previously in line 11, using if else statement to create new column to create weekend/weekdays
+```{r weekdays/weekends inserted}
+  New_data$weekday<- weekdays(New_data$date)
+      New_data$Daytype<- ifelse(New_data$weekday=='Saturday' | New_data$weekday=='Sunday','Weekend','Weekday')
+      head(New_data, n=10)
+```
+
+## create new table to use for new plot
+```{r plotting comparison weekdays/weekends}
+Steps_PerTime_complete<- aggregate(steps~interval+Daytype, data=New_data, FUN=mean, na.action = na.omit)
+      
+      ##ggplot with both weekdays/weekends
+      Plot4<- ggplot(Steps_PerTime_complete, aes(interval/100,steps,color=Daytype))
+      Plot4+ geom_line()+ facet_grid(~Daytype)+ labs(title="Average Steps per Time Interval:Weekdays vs Weekends", x="Time Interval", y="Steps")
+```
+      
+
+
+
+
+
+
